@@ -183,12 +183,14 @@ def compile_iterator_expr(
         # makes sure that we don't spuriously produce output when
         # iterating over options pointers.
         assert isinstance(iterator_query, pgast.SelectStmt)
-        iterator_var = pathctx.get_path_value_var(
-            iterator_query, path_id=iterator_expr.path_id, env=ctx.env)
-        if iterator_var.nullable:
-            iterator_query.where_clause = astutils.extend_binop(
-                iterator_query.where_clause,
-                pgast.NullTest(arg=iterator_var, negated=True))
+        is_optional = ctx.scope_tree.is_optional(iterator_expr.path_id)
+        if not is_optional:
+            iterator_var = pathctx.get_path_value_var(
+                iterator_query, path_id=iterator_expr.path_id, env=ctx.env)
+            if iterator_var.nullable:
+                iterator_query.where_clause = astutils.extend_binop(
+                    iterator_query.where_clause,
+                    pgast.NullTest(arg=iterator_var, negated=True))
 
         # Regardless of result type, we use transient identity,
         # for path identity of the iterator expression.  This is

@@ -202,6 +202,7 @@ def compile_ForQuery(
         pathctx.register_set_in_scope(
             iterator_stmt,
             path_scope=sctx.path_scope,
+            optional=qlstmt.optional,
             ctx=sctx,
         )
 
