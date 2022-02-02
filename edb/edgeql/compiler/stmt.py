@@ -150,19 +150,15 @@ def compile_SelectQuery(
     return result
 
 
-@dispatch.compile.register(qlast.ForQuery)
-def compile_ForQuery(
-        qlstmt: qlast.ForQuery, *, ctx: context.ContextLevel) -> irast.Set:
-    if rewritten := try_desugar(qlstmt, ctx=ctx):
-        return rewritten
+def _compile_for_binding(
+        qlstmt: qlast.ForQuery, binding: qlast.ForBinding,
+        *, ctx: context.ContextLevel) -> irast.Set:
 
-    with ctx.subquery() as sctx:
-        stmt = irast.SelectStmt(context=qlstmt.context)
-        init_stmt(stmt, qlstmt, ctx=sctx, parent_ctx=ctx)
-
+    # This ctx is not really needed
+    with ctx.new() as sctx:
         # As an optimization, if the iterator is a singleton set, use
         # the element directly.
-        iterator = qlstmt.iterator
+        iterator = binding.iterator
         if isinstance(iterator, qlast.Set) and len(iterator.elements) == 1:
             iterator = iterator.elements[0]
 
@@ -179,7 +175,7 @@ def compile_ForQuery(
                 ectx.expr_exposed = context.Exposure.BINDING
             iterator_view = stmtctx.declare_view(
                 iterator,
-                s_name.UnqualName(qlstmt.iterator_alias),
+                s_name.UnqualName(binding.iterator_alias),
                 factoring_fence=contains_dml,
                 path_id_namespace=sctx.path_id_namespace,
                 binding_kind=irast.BindingKind.For,
@@ -188,7 +184,6 @@ def compile_ForQuery(
 
         iterator_stmt = setgen.new_set_from_set(iterator_view, ctx=sctx)
         iterator_view.is_visible_binding_ref = True
-        stmt.iterator_stmt = iterator_stmt
 
         iterator_type = setgen.get_set_type(iterator_stmt, ctx=ctx)
         if iterator_type.is_any(ctx.env.schema):
@@ -202,7 +197,7 @@ def compile_ForQuery(
         pathctx.register_set_in_scope(
             iterator_stmt,
             path_scope=sctx.path_scope,
-            optional=qlstmt.optional,
+            optional=binding.optional,
             ctx=sctx,
         )
 
@@ -210,8 +205,8 @@ def compile_ForQuery(
         # of the UNION argument, but is perfectly legal to be referenced
         # inside a factoring fence that is an immediate child of this
         # scope.
-        sctx.path_scope.factoring_allowlist.add(stmt.iterator_stmt.path_id)
-        sctx.iterator_path_ids |= {stmt.iterator_stmt.path_id}
+        sctx.path_scope.factoring_allowlist.add(iterator_stmt.path_id)
+        sctx.iterator_path_ids |= {iterator_stmt.path_id}
         node = sctx.path_scope.find_descendant(iterator_stmt.path_id)
         if node is not None:
             # See above about why we need a factoring fence.
@@ -226,6 +221,26 @@ def compile_ForQuery(
 
             node.attach_subtree(view_scope_info.path_scope,
                                 context=iterator.context)
+
+    return iterator_stmt
+
+
+@dispatch.compile.register(qlast.ForQuery)
+def compile_ForQuery(
+        qlstmt: qlast.ForQuery, *, ctx: context.ContextLevel) -> irast.Set:
+    if rewritten := try_desugar(qlstmt, ctx=ctx):
+        return rewritten
+
+    with ctx.subquery() as sctx:
+        stmt = irast.SelectStmt(context=qlstmt.context)
+        init_stmt(stmt, qlstmt, ctx=sctx, parent_ctx=ctx)
+
+        iterator_stmts = []
+        for binding in qlstmt.iterator_bindings:
+            iterator_stmts.append(
+                _compile_for_binding(qlstmt, binding, ctx=sctx))
+
+        stmt.iterator_stmt = iterator_stmts
 
         # Compile the body
         with sctx.newscope(fenced=True) as bctx:
