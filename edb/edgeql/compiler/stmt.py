@@ -243,6 +243,8 @@ def compile_ForQuery(
                 ctx=bctx,
             )
 
+        stmt.orderby = clauses.compile_orderby_clause(qlstmt.orderby, ctx=sctx)
+
         # Inject an implicit limit if appropriate
         if ((ctx.expr_exposed or sctx.stmt is ctx.toplevel_stmt)
                 and ctx.implicit_limit):
