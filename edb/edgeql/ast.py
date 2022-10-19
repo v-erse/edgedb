@@ -1341,6 +1341,10 @@ class DescribeStmt(Statement):
     options: Options
 
 
+class SQLDebugStmt(Statement):
+    source: str
+
+
 #
 # SDL
 #

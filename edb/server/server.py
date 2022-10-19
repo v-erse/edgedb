@@ -516,6 +516,8 @@ class Server(ha_base.ClusterProtocol):
             std_schema=self._std_schema,
             refl_schema=self._refl_schema,
             schema_class_layout=self._schema_class_layout,
+            # XXX: This is a bad debuging hack, and we should not do it
+            cluster_connection_spec=self._cluster.get_connection_spec(),
         )
         if self._compiler_pool_mode == srvargs.CompilerPoolMode.Remote:
             args['address'] = self._compiler_pool_addr

@@ -83,6 +83,8 @@ class BaseWorker:
         schema_class_layout,
         global_schema,
         system_config,
+        # XXX: BAD HACK
+        cluster_connection_spec,
     ):
         self._dbs = dbs
         self._backend_runtime_params = backend_runtime_params
@@ -92,6 +94,7 @@ class BaseWorker:
         self._global_schema = global_schema
         self._system_config = system_config
         self._last_pickled_state = None
+        self._cluster_connection_spec = cluster_connection_spec
 
         self._con = None
         self._last_used = time.monotonic()
@@ -178,6 +181,8 @@ class AbstractPool:
         std_schema,
         refl_schema,
         schema_class_layout,
+        # XXX: BAD HACK
+        cluster_connection_spec,
         **kwargs,
     ):
         self._loop = loop
@@ -187,6 +192,7 @@ class AbstractPool:
         self._std_schema = std_schema
         self._refl_schema = refl_schema
         self._schema_class_layout = schema_class_layout
+        self._cluster_connection_spec = cluster_connection_spec
 
     @functools.lru_cache(maxsize=None)
     def _get_init_args(self):
@@ -215,6 +221,8 @@ class AbstractPool:
             self._schema_class_layout,
             self._dbindex.get_global_schema(),
             self._dbindex.get_compilation_system_config(),
+            # XXX: BAD HACK
+            self._cluster_connection_spec,
         )
         return init_args
 

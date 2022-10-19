@@ -611,6 +611,59 @@ class Compiler:
             devmode=self._is_dev_instance(),
         )
 
+    def _compile_ql_debug_sql(
+        self,
+        ctx: CompileContext,
+        ql: qlast.Base,
+    ) -> dbstate.BaseQuery:
+        import subprocess
+        import sys
+
+        # XXX: DEBUG HACK
+        # Implement DESCRIBE ALTER <STRING> by running <STRING> as
+        # SQL *by invoking psql* and returning the result as a string
+        assert self._is_dev_instance()
+
+        # TODO: Translate the SQL source code here
+        # current_tx = ctx.state.current_tx()
+        # schema = current_tx.get_schema(self._std_schema)
+        sql_source = ql.source + ';'
+
+        # XXX: HACK: This really is heinous
+        worker_mod = sys.modules['__main__']
+        spec = worker_mod.CLUSTER_CONNECTION_SPEC
+        dbname = [
+            k for k, v in worker_mod.DBS.items()
+            if ctx.state.current_tx().get_user_schema() is v.user_schema
+        ][0]
+
+        cmd = [
+            'build/postgres/install/bin/psql',
+            '-h', spec['host'],
+            '-U', spec['user'],
+            '-p', str(spec['port']),
+            '-d', f'{ctx.backend_runtime_params.tenant_id}_{dbname}',
+        ]
+        res = subprocess.run(
+            cmd,
+            input=sql_source,
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            encoding='utf-8',
+        )
+
+        # Add a leading newline so the output looks better in the CLI
+        out = "\n" + res.stdout
+        # Compile the result as a query that just returns the string
+        res_ql = edgeql.parse(f'SELECT {qlquote.quote_literal(out)}')
+        query = self._compile_ql_query(
+            ctx,
+            res_ql,
+            cacheable=False,
+            migration_block_query=True,
+        )
+        return query
+
     def _compile_ql_query(
         self,
         ctx: CompileContext,
@@ -1736,6 +1789,12 @@ class Compiler:
         elif isinstance(ql, (qlast.BaseSessionSet, qlast.BaseSessionReset)):
             return (
                 self._compile_ql_sess_state(ctx, ql),
+                enums.Capability.SESSION_CONFIG,
+            )
+
+        elif isinstance(ql, qlast.SQLDebugStmt):
+            return (
+                self._compile_ql_debug_sql(ctx, ql),
                 enums.Capability.SESSION_CONFIG,
             )
 

@@ -45,6 +45,7 @@ LAST_STATE: Optional[compiler.dbstate.CompilerConnectionState] = None
 STD_SCHEMA: s_schema.FlatSchema
 GLOBAL_SCHEMA: s_schema.FlatSchema
 INSTANCE_CONFIG: immutables.Map[str, config.SettingValue]
+CLUSTER_CONNECTION_SPEC: Optional[dict] = None
 
 
 def __init_worker__(
@@ -57,6 +58,7 @@ def __init_worker__(
     global STD_SCHEMA
     global GLOBAL_SCHEMA
     global INSTANCE_CONFIG
+    global CLUSTER_CONNECTION_SPEC
 
     (
         dbs,
@@ -66,6 +68,7 @@ def __init_worker__(
         schema_class_layout,
         global_schema,
         system_config,
+        cluster_connection_spec,
     ) = pickle.loads(init_args_pickled)
 
     INITED = True
@@ -77,6 +80,7 @@ def __init_worker__(
     STD_SCHEMA = std_schema
     GLOBAL_SCHEMA = global_schema
     INSTANCE_CONFIG = system_config
+    CLUSTER_CONNECTION_SPEC = cluster_connection_spec
 
     COMPILER.initialize(
         std_schema, refl_schema, schema_class_layout,
