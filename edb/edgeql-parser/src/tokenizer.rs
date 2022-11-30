@@ -898,6 +898,7 @@ pub fn is_keyword(s: &str) -> bool {
         | "drop"
         | "else"
         | "exists"
+        | "explain"
         | "extending"
         | "false"
         | "filter"
@@ -928,7 +929,6 @@ pub fn is_keyword(s: &str) -> bool {
           // Keep in sync with keywords::CURRENT_RESERVED_KEYWORDS
         // # Future reserved keywords #
           // Keep in sync with keywords::FUTURE_RESERVED_KEYWORDS
-        | "analyze"
         | "anyarray"
         | "begin"
         | "case"
@@ -938,7 +938,6 @@ pub fn is_keyword(s: &str) -> bool {
         | "do"
         | "end"
         | "execute"
-        | "explain"
         | "fetch"
         | "get"
         | "global"
