@@ -22,6 +22,7 @@ from __future__ import annotations
 import functools
 import typing
 
+from edb.common import debug
 from edb.pgsql import ast as pgast
 
 from . import context
@@ -86,3 +87,48 @@ def _resolve_BaseRelation(
 ) -> pgast.BaseRelation:
     rel, _ = resolve_relation(rel, ctx=ctx)
     return rel
+
+
+@_resolve.register
+def _resolve_VariableSetStmt(
+    set: pgast.VariableSetStmt, *, ctx: context.ResolverContextLevel
+) -> pgast.SelectStmt:
+    debug.header("Ignoring unsupported SQL")
+    debug.dump_sql(set)
+    return pgast.SelectStmt(
+        target_list=[], limit_count=pgast.NumericConstant(val="0")
+    )
+
+
+@_resolve.register
+def _resolve_VariableShowStmt(
+    show: pgast.VariableShowStmt, *, ctx: context.ResolverContextLevel
+) -> pgast.SelectStmt:
+    debug.header("Ignoring unsupported SQL.")
+    debug.dump_sql(show)
+
+    val: pgast.BaseExpr = pgast.NumericConstant(val="1")
+    if show.name == "timezone":
+        val = pgast.StringConstant(val="Europe/Ljubljana")
+
+    return pgast.SelectStmt(target_list=[pgast.ResTarget(val=val)])
+
+
+@_resolve.register
+def _resolve_TransactionStmt(
+    show: pgast.TransactionStmt, *, ctx: context.ResolverContextLevel
+) -> pgast.SelectStmt:
+    debug.header("Ignoring unsupported SQL.")
+    debug.dump_sql(show)
+
+    return pgast.SelectStmt(target_list=[])
+
+
+@_resolve.register
+def _resolve_SetTransactionStmt(
+    show: pgast.SetTransactionStmt, *, ctx: context.ResolverContextLevel
+) -> pgast.SelectStmt:
+    debug.header("Ignoring unsupported SQL.")
+    debug.dump_sql(show)
+
+    return pgast.SelectStmt(target_list=[])
