@@ -180,7 +180,8 @@ def resolve_relation(
     if relation.catalogname and relation.catalogname != 'postgres':
         raise errors.QueryError(
             f'queries cross databases are not supported',
-            context=relation.context
+            context=relation.context,
+            pgext_code=pgerror.ERROR_FEATURE_NOT_SUPPORTED,
         )
 
     # try introspection tables
