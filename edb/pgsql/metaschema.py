@@ -5258,7 +5258,8 @@ def _generate_sql_information_schema() -> List[dbops.View]:
         dbops.View(
             name=("edgedbsql", "pg_namespace"),
             query="""
-        SELECT * FROM pg_namespace WHERE nspname IN ('pg_catalog', 'pg_toast')
+        SELECT * FROM pg_namespace
+        WHERE nspname IN ('pg_catalog', 'pg_toast', 'information_schema')
         """,
         ),
         dbops.View(
@@ -5267,7 +5268,7 @@ def _generate_sql_information_schema() -> List[dbops.View]:
         SELECT pg_type.*
         FROM pg_type
         JOIN pg_namespace pn ON pg_type.typnamespace = pn.oid
-        WHERE nspname IN ('pg_catalog', 'pg_toast')
+        WHERE nspname IN ('pg_catalog', 'pg_toast', 'information_schema')
         """,
         ),
         dbops.View(
@@ -5301,7 +5302,7 @@ def _generate_sql_information_schema() -> List[dbops.View]:
         FROM pg_attribute
         JOIN pg_type pt ON pt.oid = pg_attribute.atttypid
         JOIN pg_namespace pn ON pt.typnamespace = pn.oid
-        WHERE nspname IN ('pg_catalog', 'pg_toast')
+        WHERE nspname IN ('pg_catalog', 'pg_toast', 'information_schema')
         """,
         ),
         dbops.View(
@@ -5311,7 +5312,7 @@ def _generate_sql_information_schema() -> List[dbops.View]:
         FROM pg_range
         JOIN pg_type pt ON pt.oid = pg_range.rngtypid
         JOIN pg_namespace pn ON pt.typnamespace = pn.oid
-        WHERE nspname IN ('pg_catalog', 'pg_toast')
+        WHERE nspname IN ('pg_catalog', 'pg_toast', 'information_schema')
         """,
         ),
     ]
@@ -5333,20 +5334,27 @@ def _generate_sql_information_schema() -> List[dbops.View]:
             ),
         )
         for table_name, columns in sql_introspection.INFORMATION_SCHEMA.items()
-        if table_name not in ["tables", "columns"]
+        if table_name not in ['tables', 'columns']
     ] + pg_catalog_views + [
         dbops.View(
             name=("edgedbsql", table_name),
-            query="SELECT {} LIMIT 0".format(
-                ",".join(
-                    f'NULL::{type or "text"} AS {name}'
-                    for name, type in columns
-                )
-            ),
+            query=f"SELECT * FROM pg_catalog.{table_name} LIMIT 0",
         )
-        for table_name, columns in sql_introspection.PG_CATALOG.items()
+        for table_name, _columns in sql_introspection.PG_CATALOG.items()
         if table_name not in [
-            "pg_type", "pg_attribute", "pg_namespace", "pg_range"
+            'pg_type',
+            'pg_attribute',
+            'pg_namespace',
+            'pg_range',
+
+            # Some tables contain abstract columns (i.e. anyarray) so they
+            # cannot be created into a view. So let's just hide these tables.
+            'pg_pltemplate',
+            'pg_stats',
+            'pg_stats_ext_exprs',
+            'pg_statistic',
+            'pg_statistic_ext',
+            'pg_statistic_ext_data',
         ]
     ]
 
