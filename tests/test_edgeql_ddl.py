@@ -2867,9 +2867,8 @@ class TestEdgeQLDDL(tb.DDLTestCase):
 
         await self.assert_query_result(
             'SELECT World { hell: {}, heaven: {} }',
-            [{ 'hell': {}, 'heaven': {} }]
+            [{'hell': {}, 'heaven': {}}]
         )
-        
 
     async def test_edgeql_ddl_ptr_set_cardinality_01(self):
         await self.con.execute(r'''

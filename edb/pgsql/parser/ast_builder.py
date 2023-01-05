@@ -857,7 +857,7 @@ def _build_insert_target(n: Node, c: Context) -> pgast.InsertTarget:
     )
 
 
-def _build_update_target(n: Node, c: Context) -> pgast.UpdateTarget:
+def _build_update_target(n: Node, c: Context) -> pgast.UpdateTarget:  # no QA
     n = _unwrap(n, "ResTarget")
     return pgast.UpdateTarget(
         name=_build_str(n['name'], c),
@@ -948,10 +948,19 @@ def _build_on_conflict(n: Node, c: Context) -> pgast.OnConflictClause:
     return pgast.OnConflictClause(
         action=_build_str(n["action"], c),
         infer=_maybe(n, c, "infer", _build_infer_clause),
-        target_list=_build_targets(n, c, "targetList"),
+        target_list=_build_on_conflict_targets(n, c, "targetList"),
         where=_maybe(n, c, "where", _build_base_expr),
         context=_build_context(n, c),
     )
+
+
+def _build_on_conflict_targets(
+    n: Node, c: Context, key: str
+) -> Optional[List[pgast.InsertTarget | pgast.MultiAssignRef]]:
+    if _probe(n, [key, 0, "ResTarget", "val", "MultiAssignRef"]):
+        return [_build_multi_assign_ref(n[key], c)]
+    else:
+        return _maybe_list(n, c, key, _build_insert_target)
 
 
 def _build_star(_n: Node, _c: Context) -> pgast.Star | str:
